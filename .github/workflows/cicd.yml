@@ -2,21 +2,24 @@ name: Blog Node.js CICD
 
 on:
   push:
-    branches: [dev, test, main]
+    branches:
+      - dev
+      - test
+      - main
 
 jobs:
   dev:
     if: github.ref == 'refs/heads/dev'
     uses: ./.github/workflows/reusable-node.yml
     with:
-      environment: dev
+      env: dev
     secrets: inherit
 
   test:
     if: github.ref == 'refs/heads/test'
     uses: ./.github/workflows/reusable-node.yml
     with:
-      environment: test
+      env: test
       run_sonar: true
     secrets: inherit
 
@@ -24,6 +27,6 @@ jobs:
     if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/reusable-node.yml
     with:
-      environment: production
+      env: production
       deploy_path: /home/username/public_html/blog
     secrets: inherit
