@@ -1,0 +1,58 @@
+name: Reusable Node CICD
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      run_sonar:
+        required: false
+        type: boolean
+        default: false
+      deploy_path:
+        required: false
+        type: string
+
+jobs:
+  build:
+    runs-on: [self-hosted, dev]
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - run: npm install
+
+      - if: inputs.run_sonar == true
+        run: npm test
+
+      - if: inputs.run_sonar == true
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          sonar-scanner \
+            -Dsonar.projectKey=${{ github.repository }} \
+            -Dsonar.sources=. \
+            -Dsonar.host.url=$SONAR_HOST_URL \
+            -Dsonar.login=$SONAR_TOKEN
+
+      - run: npm run build
+
+  deploy:
+    if: inputs.environment == 'production'
+    needs: build
+    runs-on: [self-hosted, prod]
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: |
+          rsync -avz --delete ./ \
+          ${{ secrets.CPANEL_USER }}@${{ secrets.CPANEL_HOST }}:${{ inputs.deploy_path }}
