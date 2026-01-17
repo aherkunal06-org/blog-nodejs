@@ -9,14 +9,14 @@ jobs:
     if: github.ref == 'refs/heads/dev'
     environment: dev
     runs-on: [self-hosted, dev]
-    uses: aherkunal06-org/devops-reusable-workflows/.github/workflows/node-blog-reusable.yml@main
+    uses: aherkunal06-org/devops-reusable-workflows/.github/workflows/reusable-node.yml@main
     secrets: inherit
 
   test:
     if: github.ref == 'refs/heads/test'
     environment: test
     runs-on: [self-hosted, dev]
-    uses: aherkunal06-org/devops-reusable-workflows/.github/workflows/node-blog-reusable.yml@main
+    uses: aherkunal06-org/devops-reusable-workflows/.github/workflows/reusable-node.yml@main
     with:
       run_sonar: true
     secrets: inherit
@@ -25,7 +25,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     environment: production
     runs-on: [self-hosted, prod]
-    uses: aherkunal06-org/devops-reusable-workflows/.github/workflows/node-blog-reusable.yml@main
+    uses: aherkunal06-org/devops-reusable-workflows/.github/workflows/reusable-node.yml@main
     with:
       deploy_path: /home/username/public_html/blog
     secrets: inherit
