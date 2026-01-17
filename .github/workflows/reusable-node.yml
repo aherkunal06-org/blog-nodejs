@@ -37,6 +37,8 @@ jobs:
 
       - name: Build application
         run: npm run build
+      - name: for dev purpose
+        run: npm run dev
 
   deploy:
     if: ${{ inputs.should_deploy == true }}
