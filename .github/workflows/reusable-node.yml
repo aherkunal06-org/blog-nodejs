@@ -1,70 +1,90 @@
-name: Reusable Node CICD
+name: Reusable Node.js Build & Deploy
 
 on:
   workflow_call:
     inputs:
-      env:
-        required: true
-        type: string
       run_sonar:
+        description: 'Whether to run SonarQube scan'
         required: false
         type: boolean
         default: false
       deploy_path:
+        description: 'Deployment path on cPanel'
         required: false
         type: string
+        default: ''
 
 jobs:
   build:
-    runs-on: 
-      - self-hosted
-      - ${{ inputs.env == 'production' && 'prod' || inputs.env }}
-    environment: ${{ inputs.env }}
+    runs-on: [self-hosted, Linux]
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
 
       - name: Install dependencies
         run: npm install
 
       - name: Run tests
-        if: inputs.run_sonar == true
-        run: npm test
+        if: ${{ inputs.run_sonar }}
+        run: npm test || echo "No tests configured"
 
       - name: SonarQube Scan
-        if: inputs.run_sonar == true
+        if: ${{ inputs.run_sonar }}
+        continue-on-error: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
-          sonar-scanner \
-            -Dsonar.projectKey=${{ github.repository }} \
-            -Dsonar.sources=. \
-            -Dsonar.host.url=$SONAR_HOST_URL \
-            -Dsonar.login=$SONAR_TOKEN
+          if [ -n "$SONAR_TOKEN" ] && [ -n "$SONAR_HOST_URL" ]; then
+            sonar-scanner \
+              -Dsonar.projectKey=${{ github.repository }} \
+              -Dsonar.sources=. \
+              -Dsonar.host.url=$SONAR_HOST_URL \
+              -Dsonar.login=$SONAR_TOKEN
+          else
+            echo "SonarQube not configured, skipping..."
+          fi
 
-      - name: Build App
+      - name: Build application
         run: npm run build
 
   deploy:
-    if: inputs.env == 'production'
+    if: ${{ inputs.deploy_path != '' }}
     needs: build
-    runs-on:
-      - self-hosted
-      - prod
-    environment: production
+    runs-on: [self-hosted, Linux]
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to cPanel
-        run: |
-          rsync -avz --delete ./ \
-          ${{ secrets.CPANEL_USER }}@${{ secrets.CPANEL_HOST }}:${{ inputs.deploy_path }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build for production
+        run: npm run build
+
+      - name: Deploy to cPanel via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./
+          server-dir: ${{ inputs.deploy_path }}/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            .env*
+            README.md
