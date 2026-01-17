@@ -1,36 +1,25 @@
-name: Blog Node.js CI/CD
+name: Blog Node.js CICD
 
 on:
   push:
     branches: [dev, test, main]
 
 jobs:
-  # Dev branch - Build only on runner-1
   dev:
     if: github.ref == 'refs/heads/dev'
     uses: ./.github/workflows/reusable-node.yml
-    with:
-      runner_labels: '["self-hosted", "dev"]'
-      environment: dev
-      should_deploy: false
     secrets: inherit
 
-  # Test branch - Build only on runner-1
   test:
     if: github.ref == 'refs/heads/test'
     uses: ./.github/workflows/reusable-node.yml
     with:
-      runner_labels: '["self-hosted", "test"]'
-      environment: test
-      should_deploy: false
+      run_sonar: true
     secrets: inherit
 
-  # Main branch - Build and Deploy on runner-2
   prod:
     if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/reusable-node.yml
     with:
-      runner_labels: '["self-hosted", "prod"]'
-      environment: production
-      should_deploy: true
+      deploy_path: /home/username/public_html/blog
     secrets: inherit
