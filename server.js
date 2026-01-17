@@ -1,5 +1,6 @@
 //
 // blog-frontend/server.js
+//
 // Custom Node.js server for cPanel Node.js Selector deployment
 // This file is optional - cPanel can also use 'next start' directly
 
