@@ -1,0 +1,31 @@
+name: Blog Node.js CICD
+
+on:
+  push:
+    branches: [dev, test, main]
+
+jobs:
+  dev:
+    if: github.ref == 'refs/heads/dev'
+    environment: dev
+    runs-on: [self-hosted, dev]
+    uses: aherkunal06-org/devops-reusable-workflows/.github/workflows/node-blog-reusable.yml@main
+    secrets: inherit
+
+  test:
+    if: github.ref == 'refs/heads/test'
+    environment: test
+    runs-on: [self-hosted, dev]
+    uses: aherkunal06-org/devops-reusable-workflows/.github/workflows/node-blog-reusable.yml@main
+    with:
+      run_sonar: true
+    secrets: inherit
+
+  prod:
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    runs-on: [self-hosted, prod]
+    uses: aherkunal06-org/devops-reusable-workflows/.github/workflows/node-blog-reusable.yml@main
+    with:
+      deploy_path: /home/username/public_html/blog
+    secrets: inherit
