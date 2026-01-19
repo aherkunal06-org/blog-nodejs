@@ -11,7 +11,7 @@ on:
 
 jobs:
   production-deploy:
-    runs-on: self-hosted
+    runs-on: self-hosted, prod
     
     steps:
       - name: Checkout Code
