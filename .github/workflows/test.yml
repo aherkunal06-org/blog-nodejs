@@ -87,7 +87,7 @@ jobs:
           # Stop any existing instance
           pm2 stop blog-test 2>/dev/null || true
           pm2 delete blog-test 2>/dev/null || true
-          
+          pwd && ls -a
           # Start the application with PM2
           pm2 start server.js --name blog-test -- --port 3002
           
