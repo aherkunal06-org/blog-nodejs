@@ -11,7 +11,7 @@ on:
 
 jobs:
   test-deploy:
-    runs-on: self-hosted
+    runs-on: test
     
     steps:
       - name: Checkout Code
