@@ -1,0 +1,65 @@
+# Dev Branch Workflow
+# Checks if port is available, builds the app, and starts with PM2
+
+name: Dev - Build and Deploy
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+jobs:
+  dev-deploy:
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Application
+        run: npm run build
+
+      - name: Check if Port 3001 is Available
+        shell: bash
+        run: |
+          PORT=3001
+          if lsof -i :$PORT > /dev/null 2>&1 || netstat -tuln | grep -q ":$PORT "; then
+            echo "⚠️ Port $PORT is in use"
+            echo "Attempting to stop existing PM2 process..."
+            pm2 stop blog-dev 2>/dev/null || true
+            pm2 delete blog-dev 2>/dev/null || true
+            sleep 2
+          else
+            echo "✅ Port $PORT is available"
+          fi
+
+      - name: Start Application with PM2
+        env:
+          PORT: 3001
+          NODE_ENV: development
+        run: |
+          # Stop any existing instance
+          pm2 stop blog-dev 2>/dev/null || true
+          pm2 delete blog-dev 2>/dev/null || true
+          
+          # Start the application with PM2
+          pm2 start server.js --name blog-dev -- --port 3001
+          
+          # Save PM2 process list
+          pm2 save
+          
+          # Show PM2 status
+          echo "📊 PM2 Status:"
+          pm2 status
+          
+          echo "✅ Dev application started on port 3001"
