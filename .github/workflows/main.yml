@@ -1,0 +1,84 @@
+# Main Branch Workflow
+# Builds app and deploys to cPanel (A2 Hosting) via FTP
+
+name: Main - Build and Deploy to cPanel
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  production-deploy:
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Application
+        run: npm run build
+
+      - name: Prepare Deployment Files
+        run: |
+          echo "📦 Preparing deployment package..."
+          
+          # Create deployment directory
+          mkdir -p deploy
+          
+          # Copy necessary files for cPanel deployment
+          cp -r .next deploy/
+          cp -r public deploy/ 2>/dev/null || echo "No public folder"
+          cp package.json deploy/
+          cp package-lock.json deploy/
+          cp server.js deploy/
+          cp next.config.js deploy/
+          cp .htaccess deploy/ 2>/dev/null || echo "No .htaccess"
+          
+          # Create production environment
+          echo "NODE_ENV=production" > deploy/.env.production
+          
+          echo "✅ Deployment package ready"
+          ls -la deploy/
+
+      - name: Deploy to cPanel via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./deploy/
+          server-dir: ${{ secrets.FTP_SERVER_DIR }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.next/cache/**
+          dangerous-clean-slate: false
+
+      - name: Post-Deployment Notification
+        run: |
+          echo "🚀 ============================================="
+          echo "🚀 DEPLOYMENT SUCCESSFUL!"
+          echo "🚀 ============================================="
+          echo ""
+          echo "📍 Deployed to: cPanel (A2 Hosting)"
+          echo "📅 Deployment Time: $(date)"
+          echo "🔖 Commit: ${{ github.sha }}"
+          echo ""
+          echo "⚠️  IMPORTANT: After deployment, go to cPanel:"
+          echo "    1. Navigate to 'Setup Node.js App'"
+          echo "    2. Click 'Run NPM Install' to install dependencies"
+          echo "    3. Click 'Restart' to restart the application"
+          echo ""
+          echo "🚀 ============================================="
