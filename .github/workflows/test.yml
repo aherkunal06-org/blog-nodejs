@@ -1,0 +1,101 @@
+# Test Branch Workflow
+# Builds app, runs SonarQube analysis if available, then starts with PM2
+
+name: Test - Build, Analyze and Deploy
+
+on:
+  push:
+    branches:
+      - test
+  workflow_dispatch:
+
+jobs:
+  test-deploy:
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for SonarQube analysis
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Application
+        run: npm run build
+
+      - name: Check SonarQube Availability
+        id: sonar-check
+        continue-on-error: true
+        run: |
+          # Check if SonarQube secrets are configured
+          if [ -n "${{ secrets.SONAR_TOKEN }}" ] && [ -n "${{ secrets.SONAR_HOST_URL }}" ]; then
+            echo "sonar_available=true" >> $GITHUB_OUTPUT
+            echo "✅ SonarQube is configured"
+          else
+            echo "sonar_available=false" >> $GITHUB_OUTPUT
+            echo "⚠️ SonarQube is not configured - skipping analysis"
+          fi
+
+      - name: Run SonarQube Analysis
+        if: steps.sonar-check.outputs.sonar_available == 'true'
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=blog-ipshopy
+            -Dsonar.projectName=Blog Ipshopy Test
+            -Dsonar.sources=src
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+
+      - name: SonarQube Quality Gate Check
+        if: steps.sonar-check.outputs.sonar_available == 'true'
+        uses: sonarsource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      - name: Check if Port 3002 is Available
+        shell: bash
+        run: |
+          PORT=3002
+          if lsof -i :$PORT > /dev/null 2>&1 || netstat -tuln | grep -q ":$PORT "; then
+            echo "⚠️ Port $PORT is in use"
+            echo "Attempting to stop existing PM2 process..."
+            pm2 stop blog-test 2>/dev/null || true
+            pm2 delete blog-test 2>/dev/null || true
+            sleep 2
+          else
+            echo "✅ Port $PORT is available"
+          fi
+
+      - name: Start Application with PM2
+        env:
+          PORT: 3002
+          NODE_ENV: test
+        run: |
+          # Stop any existing instance
+          pm2 stop blog-test 2>/dev/null || true
+          pm2 delete blog-test 2>/dev/null || true
+          
+          # Start the application with PM2
+          pm2 start server.js --name blog-test -- --port 3002
+          
+          # Save PM2 process list
+          pm2 save
+          
+          # Show PM2 status
+          echo "📊 PM2 Status:"
+          pm2 status
+          
+          echo "✅ Test application started on port 3002"
