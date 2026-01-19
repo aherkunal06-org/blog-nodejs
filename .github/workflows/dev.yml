@@ -11,11 +11,16 @@ on:
 
 jobs:
   dev-deploy:
-    runs-on: self-hosted
+    runs-on: dev
+    defaults:
+      run:
+        working-directory: ./blog-dev
     
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          path: blog-dev
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

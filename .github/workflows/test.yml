@@ -11,12 +11,16 @@ on:
 
 jobs:
   test-deploy:
-    runs-on: self-hosted
+    runs-on: test
+    defaults:
+      run:
+        working-directory: ./blog-test
     
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
+          path: blog-test
           fetch-depth: 0  # Full history for SonarQube analysis
 
       - name: Setup Node.js
