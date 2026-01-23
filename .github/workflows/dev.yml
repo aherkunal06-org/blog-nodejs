@@ -1,70 +1,83 @@
-# Dev Branch Workflow
-# Checks if port is available, builds the app, and starts with PM2
-
-name: Dev - Build and Deploy
+name: Blog CI/CD (Dev & Test with Backup)
 
 on:
   push:
     branches:
       - dev
-  workflow_dispatch:
+      - test
 
 jobs:
-  dev-deploy:
-    runs-on: dev
-    defaults:
-      run:
-        working-directory: ./blog-dev
-    
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          path: blog-dev
+  build-test-deploy:
+    runs-on: [self-hosted, blog, linux, dev]
 
-      - name: Setup Node.js
+    env:
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_PORT: ${{ secrets.DB_PORT }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: 20
+          cache: npm
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm ci
 
-      - name: Build Application
+      - name: Run tests
+        run: npm test
+
+      - name: Build application
         run: npm run build
 
-      - name: Check if Port 3001 is Available
-        shell: bash
+      # ================= DEV DEPLOY =================
+      - name: Deploy DEV with backup
+        if: github.ref == 'refs/heads/dev'
         run: |
-          PORT=3001
-          if lsof -i :$PORT > /dev/null 2>&1 || netstat -tuln | grep -q ":$PORT "; then
-            echo "⚠️ Port $PORT is in use"
-            echo "Attempting to stop existing PM2 process..."
-            pm2 stop blog-dev 2>/dev/null || true
-            pm2 delete blog-dev 2>/dev/null || true
-            sleep 2
-          else
-            echo "✅ Port $PORT is available"
+          echo "Starting DEV deployment..."
+
+          sudo rm -rf /home/github/blog.ipshopy/dev-backup
+
+          if [ -d "/home/github/blog.ipshopy/dev" ]; then
+            sudo cp -a /home/github/blog.ipshopy/dev /home/github/blog.ipshopy/dev-backup
           fi
 
-      - name: Start Application with PM2
-        env:
-          PORT: 3001
-          NODE_ENV: development
+          sudo rm -rf /home/github/blog.ipshopy/dev
+          sudo mkdir /home/github/blog.ipshopy/dev
+
+          sudo rsync -av ./ /home/github/blog.ipshopy/dev
+
+          cd /home/github/blog.ipshopy/dev
+          sudo npm install --production
+          sudo pm2 restart blog-dev || sudo pm2 start npm --name "blog-dev" -- start
+
+          echo "DEV deployment completed."
+
+      # ================= TEST DEPLOY =================
+      - name: Deploy TEST with backup
+        if: github.ref == 'refs/heads/test'
         run: |
-          # Stop any existing instance
-          pm2 stop blog-dev 2>/dev/null || true
-          pm2 delete blog-dev 2>/dev/null || true
-          
-          # Start the application with PM2
-          pm2 start server.js --name blog-dev -- --port 3001
-          
-          # Save PM2 process list
-          pm2 save
-          
-          # Show PM2 status
-          echo "📊 PM2 Status:"
-          pm2 status
-          
-          echo "✅ Dev application started on port 3001"
+          echo "Starting TEST deployment..."
+
+          sudo rm -rf /home/github/blog.ipshopy/test-backup
+
+          if [ -d "/home/github/blog.ipshopy/test" ]; then
+            sudo cp -a /home/github/blog.ipshopy/test /home/github/blog.ipshopy/test-backup
+          fi
+
+          sudo rm -rf /home/github/blog.ipshopy/test
+          sudo mkdir /home/github/blog.ipshopy/test
+
+          sudo rsync -av ./ /home/github/blog.ipshopy/test
+
+          cd /home/github/blog.ipshopy/test
+          sudo npm install --production
+          sudo pm2 restart blog-test || sudo pm2 start npm --name "blog-test" -- start
+
+          echo "TEST deployment completed."
