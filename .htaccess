@@ -4,6 +4,7 @@
 # NOTE: For cPanel Node.js Selector deployment, this file is OPTIONAL.
 # cPanel Node.js Selector handles routing automatically.
 # This file is only needed if using Apache reverse proxy or static hosting fallback.
+#
 
 # Enable Rewrite Engine
 <IfModule mod_rewrite.c>
