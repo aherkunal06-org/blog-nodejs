@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-test-deploy:
-    runs-on: [self-hosted, blog, linux, dev]
+    runs-on: dev
 
     env:
       DB_HOST: ${{ secrets.DB_HOST }}
