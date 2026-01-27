@@ -46,23 +46,23 @@ jobs:
           SERVER_IP=$(hostname -I | awk '{print $1}')
 
           # Remove old backup
-          sudo rm -rf /home/ipserver/blog.ipshopy/dev-backup
+          sudo rm -rf /home/github/blog.ipshopy/dev-backup
 
           # Backup current DEV (WITHOUT node_modules)
-          if [ -d "/home/ipserver/blog.ipshopy/dev" ]; then
-            sudo mkdir -p /home/ipserver/blog.ipshopy/dev-backup
+          if [ -d "/home/github/blog.ipshopy/dev" ]; then
+            sudo mkdir -p /home/github/blog.ipshopy/dev-backup
             sudo rsync -av --exclude=node_modules \
-              /home/ipserver/blog.ipshopy/dev/ \
-              /home/ipserver/blog.ipshopy/dev-backup/
+              /home/github/blog.ipshopy/dev/ \
+              /home/github/blog.ipshopy/dev-backup/
           fi
 
           # Delete ONLY contents of DEV (not folder)
-          sudo rm -rf /home/ipserver/blog.ipshopy/dev/*
+          sudo rm -rf /home/github/blog.ipshopy/dev/*
 
           # Deploy new code WITH node_modules
-          sudo rsync -av ./ /home/ipserver/blog.ipshopy/dev/
+          sudo rsync -av ./ /home/github/blog.ipshopy/dev/
 
-          cd /home/ipserver/blog.ipshopy/dev
+          cd /home/github/blog.ipshopy/dev
 
           # PM2 clean start / restart (no error output)
           if sudo pm2 describe blog-dev > /dev/null; then
@@ -85,23 +85,23 @@ jobs:
           SERVER_IP=$(hostname -I | awk '{print $1}')
 
           # Remove old backup
-          sudo rm -rf /home/ipserver/blog.ipshopy/test-backup
+          sudo rm -rf /home/github/blog.ipshopy/test-backup
 
           # Backup current TEST (WITHOUT node_modules)
-          if [ -d "/home/ipserver/blog.ipshopy/test" ]; then
-            sudo mkdir -p /home/ipserver/blog.ipshopy/test-backup
+          if [ -d "/home/github/blog.ipshopy/test" ]; then
+            sudo mkdir -p /home/github/blog.ipshopy/test-backup
             sudo rsync -av --exclude=node_modules \
-              /home/ipserver/blog.ipshopy/test/ \
-              /home/ipserver/blog.ipshopy/test-backup/
+              /home/github/blog.ipshopy/test/ \
+              /home/github/blog.ipshopy/test-backup/
           fi
 
           # Delete ONLY contents of TEST (not folder)
-          sudo rm -rf /home/ipserver/blog.ipshopy/test/*
+          sudo rm -rf /home/github/blog.ipshopy/test/*
 
           # Deploy new code WITH node_modules
-          sudo rsync -av ./ /home/ipserver/blog.ipshopy/test/
+          sudo rsync -av ./ /home/github/blog.ipshopy/test/
 
-          cd /home/ipserver/blog.ipshopy/test
+          cd /home/github/blog.ipshopy/test
 
           # PM2 clean start / restart (no error output)
           if sudo pm2 describe blog-test > /dev/null; then
