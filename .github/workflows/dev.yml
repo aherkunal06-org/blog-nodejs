@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-deploy:
-    runs-on: [dev]
+    runs-on: [blog]
 
     env:
       DB_HOST: ${{ secrets.DB_HOST }}
@@ -19,18 +19,22 @@ jobs:
       APP_PORT: 3000
 
     steps:
+      # ---------- CHECKOUT ----------
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ---------- NODE ----------
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
+      # ---------- INSTALL ----------
       - name: Install dependencies
-        run: npm ci
+        run: npm i
 
+      # ---------- BUILD ----------
       - name: Build application
         run: npm run build
 
@@ -39,61 +43,75 @@ jobs:
         if: github.ref == 'refs/heads/dev'
         run: |
           echo "Starting DEV deployment..."
+          SERVER_IP=$(hostname -I | awk '{print $1}')
 
           # Remove old backup
-          sudo rm -rf /home/github/blog.ipshopy/dev-backup
+          sudo rm -rf /home/ipserver/blog.ipshopy/dev-backup
 
-          # Backup current DEV (without node_modules)
-          if [ -d "/home/github/blog.ipshopy/dev" ]; then
-            sudo mkdir -p /home/github/blog.ipshopy/dev-backup
+          # Backup current DEV (WITHOUT node_modules)
+          if [ -d "/home/ipserver/blog.ipshopy/dev" ]; then
+            sudo mkdir -p /home/ipserver/blog.ipshopy/dev-backup
             sudo rsync -av --exclude=node_modules \
-              /home/github/blog.ipshopy/dev/ \
-              /home/github/blog.ipshopy/dev-backup/
+              /home/ipserver/blog.ipshopy/dev/ \
+              /home/ipserver/blog.ipshopy/dev-backup/
           fi
 
-          # Delete old DEV completely
-          sudo rm -rf /home/github/blog.ipshopy/dev
-          sudo mkdir /home/github/blog.ipshopy/dev
+          # Delete ONLY contents of DEV (not folder)
+          sudo rm -rf /home/ipserver/blog.ipshopy/dev/*
 
-          # Deploy fresh code (no node_modules)
-          sudo rsync -av --exclude=node_modules ./ /home/github/blog.ipshopy/dev
+          # Deploy new code WITH node_modules
+          sudo rsync -av ./ /home/ipserver/blog.ipshopy/dev/
 
-          cd /home/github/blog.ipshopy/dev
-          sudo npm install --production
-          sudo pm2 restart blog-dev || sudo pm2 start npm --name "blog-dev" -- start
+          cd /home/ipserver/blog.ipshopy/dev
 
-          echo "DEV deployment completed."
+          # PM2 clean start / restart (no error output)
+          if sudo pm2 describe blog-dev > /dev/null; then
+            sudo pm2 restart blog-dev
+          else
+            sudo pm2 start npm --name "blog-dev" -- start
+          fi
+
+          echo "===================================="
+          echo "DEV DEPLOYMENT COMPLETED ✅"
           echo "Local URL   : http://127.0.0.1:${APP_PORT}"
-          echo "Network URL : http://172.23.28.121:${APP_PORT}"
+          echo "Network URL : http://${SERVER_IP}:${APP_PORT}"
+          echo "===================================="
 
       # ================= TEST DEPLOY =================
       - name: Deploy TEST with backup
         if: github.ref == 'refs/heads/test'
         run: |
           echo "Starting TEST deployment..."
+          SERVER_IP=$(hostname -I | awk '{print $1}')
 
           # Remove old backup
-          sudo rm -rf /home/github/blog.ipshopy/test-backup
+          sudo rm -rf /home/ipserver/blog.ipshopy/test-backup
 
-          # Backup current TEST (without node_modules)
-          if [ -d "/home/github/blog.ipshopy/test" ]; then
-            sudo mkdir -p /home/github/blog.ipshopy/test-backup
+          # Backup current TEST (WITHOUT node_modules)
+          if [ -d "/home/ipserver/blog.ipshopy/test" ]; then
+            sudo mkdir -p /home/ipserver/blog.ipshopy/test-backup
             sudo rsync -av --exclude=node_modules \
-              /home/github/blog.ipshopy/test/ \
-              /home/github/blog.ipshopy/test-backup/
+              /home/ipserver/blog.ipshopy/test/ \
+              /home/ipserver/blog.ipshopy/test-backup/
           fi
 
-          # Delete old TEST completely
-          sudo rm -rf /home/github/blog.ipshopy/test
-          sudo mkdir /home/github/blog.ipshopy/test
+          # Delete ONLY contents of TEST (not folder)
+          sudo rm -rf /home/ipserver/blog.ipshopy/test/*
 
-          # Deploy fresh code (no node_modules)
-          sudo rsync -av --exclude=node_modules ./ /home/github/blog.ipshopy/test
+          # Deploy new code WITH node_modules
+          sudo rsync -av ./ /home/ipserver/blog.ipshopy/test/
 
-          cd /home/github/blog.ipshopy/test
-          sudo npm install --production
-          sudo pm2 restart blog-test || sudo pm2 start npm --name "blog-test" -- start
+          cd /home/ipserver/blog.ipshopy/test
 
-          echo "TEST deployment completed."
+          # PM2 clean start / restart (no error output)
+          if sudo pm2 describe blog-test > /dev/null; then
+            sudo pm2 restart blog-test
+          else
+            sudo pm2 start npm --name "blog-test" -- start
+          fi
+
+          echo "===================================="
+          echo "TEST DEPLOYMENT COMPLETED ✅"
           echo "Local URL   : http://127.0.0.1:${APP_PORT}"
-          echo "Network URL : http://172.23.28.121:${APP_PORT}"
+          echo "Network URL : http://${SERVER_IP}:${APP_PORT}"
+          echo "===================================="
